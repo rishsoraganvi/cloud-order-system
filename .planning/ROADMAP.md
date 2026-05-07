@@ -60,15 +60,17 @@
 
 ---
 
-## Phase 5 — API Gateway (nginx) (1 day)
+## Phase 5 — API Gateway (nginx) (1 day) ✅ COMPLETE
 **Goals:** Provide nginx.conf with routing and rate limiting.
 
 **Plans:**
-- [ ] 05-01-PLAN.md — nginx configuration, routing, rate limiting (token bucket), Dockerfile
+- [x] 05-01-PLAN.md — nginx configuration, routing, rate limiting (token bucket), Dockerfile
 
 **Requirements:** GATEWAY-01, GATEWAY-02
 
 **Technology:** nginx (configuration-only)
+
+**Status:** Phase 5 complete. nginx.conf with 3 upstreams, rate limiting (10 req/s per IP), routing to all services. See 05-01-SUMMARY.md for details.
 
 ---
 
