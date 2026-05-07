@@ -1,0 +1,9 @@
+com\store\product\dto\ProductResponse.class
+com\store\product\repository\ProductRepository.class
+com\store\product\service\ProductService$InsufficientStockException.class
+com\store\product\controller\ProductController.class
+com\store\product\controller\ProductController$ErrorResponse.class
+com\store\product\model\Product.class
+com\store\product\ProductServiceApplication.class
+com\store\product\dto\ProductRequest.class
+com\store\product\service\ProductService.class
