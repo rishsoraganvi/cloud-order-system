@@ -1,32 +1,43 @@
 created_by: gsd-new-project --auto
 created_at: 2026-05-07T00:00:00Z
 source: full_build_plan.md
-current_phase: 5
-current_position: "Phase 5 (05-api-gateway) COMPLETE — Ready for Phase 0 (Setup) or Phase 6 (CI/CD)"
-last_activity: "Executed Phase 5 Plan 05-01: API Gateway nginx configuration (routing, rate limiting)"
+current_phase: 6
+current_position: "Phase 6 (06-ci-cd-pipeline) COMPLETE — Only Phase 0 (Setup & Scaffolding) remains"
+last_activity: "Executed Phase 6 Plan 06-01: GitHub Actions CI/CD pipeline (lint, test, build, ECR push)"
 completed_phases:
   - phase: 1
     name: User Service
-    status: scaffolded
+    status: complete
+    summary: "FastAPI with JWT auth, bcrypt hashing, register/login endpoints"
   - phase: 2
     name: Product Service
-    status: scaffolded
+    status: complete
+    summary: "Spring Boot JPA with atomic stock reservation and pagination"
   - phase: 3
     name: Order Service
-    status: scaffolded
+    status: complete
+    summary: "State machine logic, RabbitMQ event publishing, inter-service HTTP calls"
   - phase: 4
     name: Notification Service
     status: complete
-    summary: "04-01-SUMMARY.md — Factory pattern, RabbitMQ consumer, 10 tests passing"
+    summary: "Factory pattern notifiers, RabbitMQ consumer, 10 passing tests"
   - phase: 5
     name: API Gateway
     status: complete
-    summary: "05-01-SUMMARY.md — nginx routing, rate limiting, health checks"
+    summary: "nginx routing, rate limiting (10 req/s per IP), health checks"
+  - phase: 6
+    name: CI/CD Pipeline
+    status: complete
+    summary: "GitHub Actions workflow with lint, test, build, ECR push"
+pending_phases:
+  - phase: 0
+    name: Setup & Scaffolding
+    status: pending
+    description: "docker-compose.yml, README.md, architecture.md, .gitignore, LICENSE"
 notes:
   - initialized from full_build_plan.md
-  - Phase 1 (User Service) execution complete with JWT auth and bcrypt hashing
-  - Phase 2 (Product Service) execution complete with Spring Boot JPA and atomic stock reservation
-  - Phase 3 (Order Service) execution complete with state machine logic and RabbitMQ event publishing
-  - Phase 4 (Notification Service) execution complete with Factory pattern and RabbitMQ consumer
-  - Phase 5 (API Gateway) execution complete with nginx routing and rate limiting
-  - Ready for Phase 0 (docker-compose orchestration) or Phase 6 (GitHub Actions CI/CD)
+  - All 4 microservices scaffolded: User (Python), Product (Java), Order (Python), Notification (Python)
+  - API Gateway (nginx) with routing and rate limiting complete
+  - GitHub Actions CI/CD pipeline complete with linting, testing, Docker builds, ECR push
+  - Phase 0 is the final phase: docker-compose orchestration and project documentation
+  - After Phase 0: system ready for local testing (docker-compose up) and production deployment (ECS)
