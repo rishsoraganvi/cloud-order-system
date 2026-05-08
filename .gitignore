@@ -12,3 +12,5 @@ target/
 .vscode/
 coverage/
 dist/
+/.planning
+full_build_plan.md
