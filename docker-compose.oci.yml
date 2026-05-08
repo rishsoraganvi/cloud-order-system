@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  user-service:
+    image: "${OCIR_REGISTRY}/user-service:latest"
+    restart: unless-stopped
+    env_file: .env
+
+  product-service:
+    image: "${OCIR_REGISTRY}/product-service:latest"
+    restart: unless-stopped
+    env_file: .env
+
+  order-service:
+    image: "${OCIR_REGISTRY}/order-service:latest"
+    restart: unless-stopped
+    env_file: .env
+
+  notification-service:
+    image: "${OCIR_REGISTRY}/notification-service:latest"
+    restart: unless-stopped
+    env_file: .env
+
+  api-gateway:
+    image: "${OCIR_REGISTRY}/api-gateway:latest"
+    restart: unless-stopped
+    env_file: .env
+
+networks:
+  default:
+    external: false
