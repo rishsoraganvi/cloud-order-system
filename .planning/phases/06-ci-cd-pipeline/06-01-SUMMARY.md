@@ -16,11 +16,11 @@
 
 3. ✅ **Docker Image Building** — Automated Docker builds for all 4 services + API Gateway with layer caching.
 
-4. ✅ **ECR Registry Push** — Images tagged with commit SHA + `latest` tag pushed to AWS ECR after all tests pass.
+4. ✅ **OCIR Registry Push** — Images tagged with commit SHA + `latest` tag pushed to Oracle Cloud Container Registry (OCIR) after all tests pass.
 
 5. ✅ **Branch Protection** — Pipeline triggers on push to `main` and pull requests; failures prevent merge.
 
-6. ✅ **GitHub Secrets Management** — Documentation for configuring AWS credentials securely in GitHub.
+6. ✅ **GitHub Secrets Management** — Documentation for configuring Oracle Cloud credentials securely in GitHub.
 
 ---
 
@@ -31,7 +31,7 @@
 | File | Lines | Purpose |
 |------|-------|---------|
 | `.github/workflows/ci-cd.yml` | 200+ | Complete GitHub Actions workflow with 4 jobs (lint, test-python, test-java, build-and-push) |
-| `docs/ci-cd-setup.md` | 450+ | Comprehensive setup guide with AWS ECR, IAM, Secrets, and troubleshooting |
+| `docs/ci-cd-setup.md` | 450+ | Comprehensive setup guide with Oracle Cloud Container Registry (OCIR), IAM, Secrets, and troubleshooting |
 
 **Total:** 650+ lines of CI/CD infrastructure
 
@@ -52,7 +52,7 @@ TRIGGER (push to main or PR)
     ↓                         ↓                      ↓
 ┌──────────────┐   ┌──────────────────┐   ┌──────────────┐
 │TEST-PYTHON   │   │ TEST-JAVA        │   │BUILD-AND-PUSH│
-│(pytest)      │   │ (mvn test)       │   │(Docker → ECR)│
+│(pytest)      │   │ (mvn test)       │   │(Docker → OCIR)│
 └──────────────┘   └──────────────────┘   └──────────────┘
                                                (main only)
 ```
@@ -101,14 +101,14 @@ TRIGGER (push to main or PR)
 **Requires:** All tests pass  
 **Tasks:**
 - Set up Docker Buildx
-- Authenticate to AWS ECR
+- Authenticate to Oracle Cloud Container Registry (OCIR)
 - For each service (User, Product, Order, Notification) + Gateway:
   * Build Docker image
   * Tag: SHA + latest
   * Enable layer caching (buildcache)
-  * Push to ECR
+  * Push to OCIR
 
-**ECR Image Tagging:**
+**OCIR Image Tagging:**
 - **Commit SHA tag:** `user-service:a1b2c3d4` (specific build)
 - **Latest tag:** `user-service:latest` (stable release)
 
@@ -120,14 +120,19 @@ TRIGGER (push to main or PR)
 
 ### Secrets Required
 
-Four GitHub Secrets must be configured in repository settings:
+Required GitHub Secrets to authenticate with Oracle Cloud and perform deploys:
 
 | Secret | Value | Example |
 |--------|-------|---------|
-| `AWS_ACCESS_KEY_ID` | IAM access key | `AKIA...` |
-| `AWS_SECRET_ACCESS_KEY` | IAM secret key | `wJalrX...` |
-| `AWS_REGION` | ECR region | `us-east-1` |
-| `ECR_REGISTRY` | ECR endpoint | `123456789.dkr.ecr.us-east-1.amazonaws.com` |
+| `OCI_PRIVATE_KEY` | PEM-formatted API key (contents) | (paste private key file contents) |
+| `OCI_USER_OCID` | OCI user OCID | `ocid1.user.oc1..aaaa...` |
+| `OCI_FINGERPRINT` | API key fingerprint | `20:3b:97:13:55:1c:...` |
+| `OCI_TENANCY_OCID` | Tenancy OCID | `ocid1.tenancy.oc1..aaaa...` |
+| `OCI_REGION` | OCI region | `us-phoenix-1` |
+| `OCI_NAMESPACE` | OCIR namespace (tenancy namespace) | `my-tenant-namespace` |
+| `OCIR_REGISTRY` | OCIR registry base (region + namespace) | `phx.ocir.io/my-tenant-namespace` |
+| `DEPLOY_SSH_USER` | SSH user for production host (optional) | `opc` |
+| `DEPLOY_HOST` | Production host IP or DNS (optional) | `198.51.100.12` |
 
 ### Workflow Triggers
 
@@ -151,14 +156,14 @@ on:
 
 | Threat ID | Category | Component | Disposition | Implementation |
 |-----------|----------|-----------|-------------|-----------------|
-| T-01 | S | GitHub Secrets | **mitigate** | ✅ AWS credentials stored in GitHub Secrets (encrypted at rest) |
+| T-01 | S | GitHub Secrets | **mitigate** | ✅ Oracle Cloud credentials stored in GitHub Secrets (encrypted at rest) |
 | T-02 | T | Docker caching | mitigate | Buildcache invalidated if base image changes |
 | T-03 | R | Failed tests | **mitigate** | ✅ Branch protection required: tests must pass before merge |
 
 **T-01 (Secrets Protection):**
 - GitHub Secrets are encrypted at rest and in transit
 - Secrets redacted in workflow logs
-- IAM user has minimal ECR-only permissions
+- IAM user has minimal OCIR-only permissions
 
 **T-03 (Test Gating):**
 - Set branch protection rule: "Require status checks to pass"
@@ -204,11 +209,11 @@ All 5 services/gateway produce 2 tags per build:
 - Always points to most recent build
 - Used for canary deployments
 
-### ECR Push Summary
+### OCIR Push Summary
 
 ```
 user-service:a1b2c3d4 ───┐
-user-service:latest ──────┼──> ECR Registry
+user-service:latest ──────┼──> OCIR Registry
 product-service:a1b2c3d4 ─┤
 product-service:latest ───┤
 order-service:a1b2c3d4 ───┤
@@ -245,8 +250,8 @@ api-gateway:latest ────────┘
    - build-and-push ✓ (starts immediately after tests)
 3. **Docker builds for all 5 services**
 4. **Images tagged:** `user-service:a1b2c3d4` and `user-service:latest`
-5. **All images pushed to ECR**
-6. **Production ECS cluster pulls latest tag** (optional integration)
+5. **All images pushed to OCIR**
+6. **Production Oracle Cloud Always Free cluster pulls latest tag** (optional integration)
 7. **Deployment complete** (5-10 minutes total)
 
 ---
@@ -255,18 +260,19 @@ api-gateway:latest ────────┘
 
 ### Current Limitations
 
-1. **No automatic ECS deployment** — Images pushed to ECR but manual or separate CD job triggers ECS update
+1. **No automatic Oracle Cloud Always Free deployment** — Images pushed to OCIR but manual or separate CD job triggers Oracle Cloud Always Free update
 2. **Static rate limits** — Workflow has no concurrency limits (could be added for quota management)
 3. **No artifact retention** — Test reports not archived (could add upload-artifact step)
 4. **No notifications** — No Slack/email on build failure (could integrate with Slack API)
 
 ### Future Enhancements
 
-#### Phase 6.1: ECS Deployment
-Add automatic update to ECS task definitions and deployment to Fargate clusters:
+#### Phase 6.1: Oracle Cloud Always Free Deployment
+Add automatic update to Oracle Cloud Always Free deployment targets (example: SSH into ARM A1 Compute instance and restart containers):
 ```yaml
-- name: Update ECS service
-  run: aws ecs update-service --cluster ecommerce --service user-service --force-new-deployment
+- name: Update Oracle Cloud Always Free host via SSH
+  run: |
+    ssh -o StrictHostKeyChecking=no ${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_HOST }} "cd /opt/ecommerce && docker compose pull && docker compose up -d"
 ```
 
 #### Phase 6.2: Test Report Archival
@@ -355,7 +361,7 @@ Add code quality gates with SonarQube scanning:
 | Requirement | Implementation |
 |---|---|
 | **CICD-01** | ✅ Linting (flake8) + Testing (pytest, mvn) on every commit |
-| **CICD-02** | ✅ Docker images built and pushed to AWS ECR on main branch |
+| **CICD-02** | ✅ Docker images built and pushed to Oracle Cloud Container Registry (OCIR) on main branch |
 | **CICD-03** | ✅ Pipeline configuration in .github/workflows/ci-cd.yml with full documentation |
 
 ---
@@ -364,7 +370,7 @@ Add code quality gates with SonarQube scanning:
 
 ### Immediate (Post Phase 6)
 
-1. **Create AWS ECR repositories** (see docs/ci-cd-setup.md)
+1. **Create Oracle Cloud Container Registry (OCIR) repositories** (see docs/ci-cd-setup.md)
 2. **Create IAM user and generate access keys**
 3. **Configure GitHub Secrets** in repository settings
 4. **Test workflow** by pushing to main branch
@@ -372,7 +378,7 @@ Add code quality gates with SonarQube scanning:
 
 ### Optional Enhancements
 
-1. **Phase 6.1 (ECS Deployment):** Automate ECS task definition updates
+1. **Phase 6.1 (Oracle Cloud Always Free Deployment):** Automate Oracle Cloud Always Free task definition updates
 2. **Phase 6.2 (Notifications):** Send Slack alerts on build failure
 3. **Phase 6.3 (Code Quality):** Integrate SonarQube for code metrics
 4. **Phase 6.4 (Artifact Retention):** Archive test reports and coverage
@@ -388,10 +394,11 @@ Phase 6 delivers a **production-grade CI/CD pipeline** using GitHub Actions. The
 - **Branch protection** (test failures prevent merge)
 - **Multi-language support** (Python + Java services)
 
-All workflows configured. All jobs defined. Ready for AWS ECR integration and production deployment.
+All workflows configured. All jobs defined. Ready for Oracle Cloud Container Registry (OCIR) integration and production deployment.
 
 ---
 
 **Executed By:** GSD Phase Executor (gsd-planner mode)  
 **Execution Time:** ~4 minutes  
-**Commit:** feat(06-ci-cd): add GitHub Actions workflow with lint, test, build, and ECR push
+**Commit:** feat(06-ci-cd): add GitHub Actions workflow with lint, test, build, and OCIR push
+

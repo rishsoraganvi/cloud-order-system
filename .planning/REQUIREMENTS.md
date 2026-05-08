@@ -29,7 +29,7 @@ Functional Requirements (by service)
 Non-Functional Requirements
 -------------------------
 - Services must run in containers with Docker; local orchestration via `docker-compose` for dev.
-- CI/CD: GitHub Actions must lint, test, build Docker images, and push to ECR on `main`.
+- CI/CD: GitHub Actions must lint, test, build Docker images, and push to OCIR on `main`.
 - Observability: basic health endpoints and logs; include request-level logging for services.
 - Security: JWT-based auth for protected endpoints; secrets not hard-coded.
 
@@ -38,3 +38,4 @@ Acceptance Criteria
 - End-to-end local run via `docker-compose up` with all services, DBs, and RabbitMQ.
 - Automated tests for User and Order services run in CI and pass.
 - Product service built via Maven/Gradle and packaged as Docker image in CI.
+

@@ -173,8 +173,8 @@ listen 80 default_server;
 | T-03 | I | Header injection | **mitigate** | ✅ nginx sanitizes headers; proxy_set_header rewrites/adds safe headers only |
 
 **Threat T-01 (DDoS):** Rate limiting implemented at nginx layer. Additional protections for production:
-- Cloud WAF (AWS WAF, CloudFlare) for IP reputation filtering
-- Auto-scaling ECS task groups to handle legitimate traffic spikes
+- Cloud WAF (Oracle Cloud WAF, CloudFlare) for IP reputation filtering
+- Auto-scaling Oracle Cloud Always Free task groups to handle legitimate traffic spikes
 - DDoS scrubbing appliance upstream of gateway
 
 **Threat T-03 (Header Injection):** nginx explicitly sets headers; untrusted client headers cannot inject new headers (nginx doesn't blindly forward unknown headers from clients to upstream).
@@ -293,7 +293,7 @@ curl http://localhost/health/orders
 
 1. **Phase 0 (Setup & Scaffolding):** Create docker-compose.yml that orchestrates all services + gateway + RabbitMQ + PostgreSQL.
 
-2. **Phase 6 (CI/CD):** Add TLS/HTTPS, integrate with AWS ALB (Application Load Balancer) for HA, configure CloudFlare or AWS WAF.
+2. **Phase 6 (CI/CD):** Add TLS/HTTPS, integrate with Oracle Cloud ALB (Application Load Balancer) for HA, configure CloudFlare or Oracle Cloud WAF.
 
 3. **Optional enhancements:** Add API rate limiting per user (JWT claim), implement request/response logging to ELK stack, add distributed tracing (Jaeger).
 
@@ -315,3 +315,4 @@ All routing rules verified. Rate limiting active. Ready for docker-compose orche
 **Executed By:** GSD Phase Executor (gsd-planner mode)  
 **Execution Time:** ~3 minutes  
 **Commit:** feat(05-api-gateway): create nginx configuration with routing and rate limiting
+

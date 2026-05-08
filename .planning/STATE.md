@@ -3,7 +3,7 @@ created_at: 2026-05-07T00:00:00Z
 source: full_build_plan.md
 current_phase: 6
 current_position: "Phase 6 (06-ci-cd-pipeline) COMPLETE — Only Phase 0 (Setup & Scaffolding) remains"
-last_activity: "Executed Phase 6 Plan 06-01: GitHub Actions CI/CD pipeline (lint, test, build, ECR push)"
+last_activity: "Executed Phase 6 Plan 06-01: GitHub Actions CI/CD pipeline (lint, test, build, OCIR push)"
 completed_phases:
   - phase: 1
     name: User Service
@@ -28,7 +28,7 @@ completed_phases:
   - phase: 6
     name: CI/CD Pipeline
     status: complete
-    summary: "GitHub Actions workflow with lint, test, build, ECR push"
+    summary: "GitHub Actions workflow with lint, test, build, OCIR push"
 pending_phases:
   - phase: 0
     name: Setup & Scaffolding
@@ -38,6 +38,7 @@ notes:
   - initialized from full_build_plan.md
   - All 4 microservices scaffolded: User (Python), Product (Java), Order (Python), Notification (Python)
   - API Gateway (nginx) with routing and rate limiting complete
-  - GitHub Actions CI/CD pipeline complete with linting, testing, Docker builds, ECR push
+  - GitHub Actions CI/CD pipeline complete with linting, testing, Docker builds, OCIR push
   - Phase 0 is the final phase: docker-compose orchestration and project documentation
-  - After Phase 0: system ready for local testing (docker-compose up) and production deployment (ECS)
+  - After Phase 0: system ready for local testing (docker-compose up) and production deployment (Oracle Cloud Always Free)
+

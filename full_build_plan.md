@@ -1,5 +1,5 @@
 # Full Build Plan: Cloud-Native E-Commerce Order Processing System
-### Microservices Architecture | Python (FastAPI) + Java (Spring Boot) | AWS | CI/CD
+### Microservices Architecture | Python (FastAPI) + Java (Spring Boot) | Oracle Cloud | CI/CD
 
 ---
 
@@ -57,9 +57,9 @@ Each service has its **own database** (Database-per-Service pattern). Services c
 | Cloud-native apps & microservices | 4 independent services, each in its own container |
 | Python | FastAPI for User, Order, Notification services |
 | Java | Spring Boot 3 for Product Service |
-| AWS / GCP / Azure | Deploy via AWS ECS (Fargate) — free tier eligible |
+| Oracle Cloud / GCP / Azure | Deploy via Oracle Cloud Always Free (ARM A1, 24 GB RAM) — free tier eligible |
 | RESTful APIs | All services expose REST endpoints |
-| DevOps / CI-CD | GitHub Actions: lint → test → Docker build → push to ECR → deploy |
+| DevOps / CI-CD | GitHub Actions: lint → test → Docker build → push to OCIR → deploy |
 | DSA | Order state machine (graph), token bucket rate limiter in gateway config |
 | Design Patterns | Repository, Factory, Observer, Strategy |
 | SOLID principles | Interface-first design, SRP per service, DI throughout |
@@ -403,38 +403,45 @@ jobs:
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ap-south-1
-      - name: Build & push Docker images to ECR
+      - name: Configure OCI CLI credentials
         run: |
-          aws ecr get-login-password | docker login --username AWS --password-stdin $ECR_REGISTRY
+          mkdir -p ~/.oci
+          printf "%s" "${{ secrets.OCI_PRIVATE_KEY }}" > ~/.oci/oci_api_key.pem
+          chmod 600 ~/.oci/oci_api_key.pem
+          cat > ~/.oci/config <<'EOF'
+          [DEFAULT]
+          user=${{ secrets.OCI_USER_OCID }}
+          fingerprint=${{ secrets.OCI_FINGERPRINT }}
+          tenancy=${{ secrets.OCI_TENANCY_OCID }}
+          region=${{ secrets.OCI_REGION }}
+          key_file=~/.oci/oci_api_key.pem
+          EOF
+      - name: Build & push Docker images to OCIR
+        run: |
+          echo "${{ secrets.OCI_AUTH_TOKEN }}" | docker login $OCIR_REGISTRY -u "${{ secrets.OCI_NAMESPACE }}/${{ secrets.OCI_USERNAME }}" --password-stdin
           docker build -t user-service ./services/user-service
-          docker tag user-service:latest $ECR_REGISTRY/user-service:$GITHUB_SHA
-          docker push $ECR_REGISTRY/user-service:$GITHUB_SHA
+          docker tag user-service:latest $OCIR_REGISTRY/user-service:$GITHUB_SHA
+          docker push $OCIR_REGISTRY/user-service:$GITHUB_SHA
 ```
 
-Pipeline stages: **PR → run tests** | **Merge to main → build + push to ECR → deploy to ECS**
+Pipeline stages: **PR → run tests** | **Merge to main → build + push to OCIR → deploy to Oracle Cloud Always Free**
 
 ---
 
-## Phase 7 — Cloud Deployment (AWS Free Tier)
+## Phase 7 — Cloud Deployment (Oracle Cloud Free Tier)
 **Duration: 2–3 days**
 
-### Deploy to AWS ECS (Fargate)
+### Deploy to Oracle Cloud Always Free (ARM A1, 24 GB RAM)
 
-1. **ECR** — Push Docker images for all 4 services
-2. **ECS Cluster** — Create a Fargate cluster (no servers to manage)
+1. **OCIR** — Push Docker images for all 4 services
+2. **Oracle Cloud Always Free Cluster** — Create a ARM A1 Compute cluster (no servers to manage)
 3. **Task Definitions** — One per service, define CPU/memory, env vars, port mappings
-4. **Services** — Run each task definition as an ECS Service with desired count = 1
-5. **RDS (PostgreSQL)** — Use RDS Free Tier (db.t3.micro) for databases
-6. **Application Load Balancer** — Route traffic to the correct ECS service
-7. **Secrets Manager** — Store DB passwords, JWT secret (never hardcode)
+4. **Services** — Run each task definition as an Oracle Cloud Always Free Service with desired count = 1
+5. **Oracle Cloud Autonomous Database (PostgreSQL-compatible option)** — Use Always Free database resources for persistence
+6. **Application Load Balancer** — Route traffic to the correct Oracle Cloud Always Free service
+7. **OCI Vault** — Store DB passwords, JWT secret (never hardcode)
 
-> **Free tier tip**: Deploy only User Service + Order Service to AWS for the demo. Run Product + Notification locally via Docker Compose. Mention in your README: "production-ready for multi-service ECS deployment."
+> **Free tier tip**: Deploy only User Service + Order Service to Oracle Cloud for the demo. Run Product + Notification locally via Docker Compose. Mention in your README: "production-ready for multi-service Oracle Cloud Always Free deployment."
 
 ---
 
@@ -452,8 +459,8 @@ logger = logging.getLogger(__name__)
 logger.info(json.dumps({"event": "order_placed", "order_id": order.id, "user_id": user_id}))
 ```
 
-### AWS CloudWatch
-- ECS automatically ships container logs to CloudWatch
+### Oracle Cloud Logging
+- Oracle Cloud Always Free can ship container logs to OCI Logging
 - Create a simple dashboard: request count per service, error rate, latency
 
 ---
@@ -481,7 +488,7 @@ cd services/user-service && pytest
 cd services/product-service && mvn test
 
 ## CI/CD
-GitHub Actions pipeline: test → build → push to ECR → deploy to ECS
+GitHub Actions pipeline: test → build → push to OCIR → deploy to Oracle Cloud Always Free
 [Link to Actions tab]
 
 ## Design Decisions
@@ -516,7 +523,7 @@ GitHub Actions pipeline: test → build → push to ECR → deploy to ECS
 | 4 | Notification Service + RabbitMQ | 2–3 days |
 | 5 | API Gateway (nginx config) | 1 day |
 | 6 | CI/CD (GitHub Actions) | 2–3 days |
-| 7 | AWS ECS Deployment | 2–3 days |
+| 7 | Oracle Cloud Oracle Cloud Always Free Deployment | 2–3 days |
 | 8 | Observability + health endpoints | 2 days |
 | 9 | README + documentation | 1–2 days |
 | **Total** | | **~4–5 weeks** |
@@ -540,3 +547,4 @@ GitHub Actions pipeline: test → build → push to ECR → deploy to ECS
 ---
 
 *Tip: Record a 2-minute Loom video walking through the architecture and a live demo of placing an order end-to-end. Paste the link at the top of your README. Almost no other candidates do this.*
+

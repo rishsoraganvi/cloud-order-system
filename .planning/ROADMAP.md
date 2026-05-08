@@ -75,14 +75,14 @@
 ---
 
 ## Phase 6 — CI/CD Pipeline (GitHub Actions) (2–3 days) ✅ COMPLETE
-**Goals:** Implement GitHub Actions workflow: lint, test, build Docker images, push to ECR.
+**Goals:** Implement GitHub Actions workflow: lint, test, build Docker images, push to OCIR.
 
 **Plans:**
-- [x] 06-01-PLAN.md — GitHub Actions workflow with Python/Java tests, Docker build/push, ECR integration
+- [x] 06-01-PLAN.md — GitHub Actions workflow with Python/Java tests, Docker build/push, OCIR integration
 
 **Requirements:** CICD-01, CICD-02, CICD-03
 
-**Technology:** GitHub Actions, AWS ECR
+**Technology:** GitHub Actions, Oracle Cloud Container Registry (OCIR)
 
 **Status:** Phase 6 complete. GitHub Actions workflow with 4 jobs: lint, test-python, test-java, build-and-push. All services tested and built on main branch. See 06-01-SUMMARY.md for details.
 
@@ -102,3 +102,4 @@ Each phase plan (`XX-01-PLAN.md`) contains:
 - STRIDE threat model for security review
 
 Run phase plans sequentially using the `/gsd-execute-phase` command.
+

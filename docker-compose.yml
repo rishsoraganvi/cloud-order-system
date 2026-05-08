@@ -1,0 +1,97 @@
+version: '3.8'
+
+services:
+  user-service:
+    build: ./services/user-service
+    ports:
+      - "8001:8001"
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@db1:5432/userdb
+    volumes:
+      - ./services/user-service:/app
+    depends_on:
+      - db1
+      - rabbitmq
+
+  product-service:
+    build: ./services/product-service
+    ports:
+      - "8002:8002"
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@db2:5433/productdb
+    volumes:
+      - ./services/product-service:/app
+    depends_on:
+      - db2
+      - rabbitmq
+
+  order-service:
+    build: ./services/order-service
+    ports:
+      - "8003:8003"
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@db3:5434/orderdb
+    volumes:
+      - ./services/order-service:/app
+    depends_on:
+      - db3
+      - rabbitmq
+
+  notification-service:
+    build: ./services/notification-service
+    ports:
+      - "8004:8004"
+    environment:
+      - NOTIFICATION_BACKEND=console
+    volumes:
+      - ./services/notification-service:/app
+    depends_on:
+      - rabbitmq
+
+  api-gateway:
+    build: ./gateway
+    ports:
+      - "80:80"
+    depends_on:
+      - user-service
+      - product-service
+      - order-service
+      - notification-service
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  db1:
+    image: postgres:15
+    environment:
+      - POSTGRES_PASSWORD=password
+    ports:
+      - "5432:5432"
+
+  db2:
+    image: postgres:15
+    environment:
+      - POSTGRES_PASSWORD=password
+    ports:
+      - "5433:5433"
+
+  db3:
+    image: postgres:15
+    environment:
+      - POSTGRES_PASSWORD=password
+    ports:
+      - "5434:5434"
+
+  db4:
+    image: postgres:15
+    environment:
+      - POSTGRES_PASSWORD=password
+    ports:
+      - "5435:5435"
+
+networks:
+  default:
+    name: ecommerce_default

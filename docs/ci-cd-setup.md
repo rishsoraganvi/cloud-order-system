@@ -1,328 +1,225 @@
-# CI/CD Pipeline Setup Guide
+# CI/CD Pipeline Setup Guide - Oracle Cloud Always Free
 
 ## Overview
 
 This project uses GitHub Actions to automate:
-This project uses GitHub Actions to automate:
+- Linting - Code quality checks using flake8
+- Testing - Unit tests via pytest (Python) and mvn test (Java)
+- Building - Docker image creation for all services
+- Pushing - Automated image push to Oracle Cloud Container Registry (OCIR)
+- Deploying - Optional deployment to Oracle Cloud Always Free (ARM A1, 24 GB RAM)
+
+The pipeline is triggered automatically on:
+- Push to `main` branch
+- Pull requests to `main` branch
+
+---
+
+## Prerequisites
+
+### Oracle Cloud Account Setup
+
+1. Sign up for Oracle Cloud Always Free and open the OCI Console.
+2. Identify your OCI region (example: `us-phoenix-1`).
+3. Enable access to Oracle Cloud Container Registry (OCIR).
+4. Find your tenancy namespace:
    ```bash
-   aws ecr create-repository --repository-name user-service --region us-east-1
-   aws ecr create-repository --repository-name product-service --region us-east-1
-   aws ecr create-repository --repository-name order-service --region us-east-1
-   aws ecr create-repository --repository-name notification-service --region us-east-1
-   aws ecr create-repository --repository-name api-gateway --region us-east-1
+   oci os ns get --auth api_key
    ```
+5. Create an API key for your OCI user:
+   - OCI Console -> Profile -> My profile -> API keys -> Add API key
+   - Save key fingerprint, tenancy OCID, and user OCID
 
-2. **Create IAM User for GitHub Actions** (minimal permissions):
-   - Go to AWS IAM Console → Users → Create user
-   - Attach policy with ECR push permissions:
-   ```json
-   {
-     "Version": "2012-10-17",
-     "Statement": [
-       {
-         "Effect": "Allow",
-         "Action": [
-           "ecr:GetAuthorizationToken",
-           "ecr:BatchGetImage",
-           "ecr:GetDownloadUrlForLayer",
-           "ecr:PutImage",
-           "ecr:InitiateLayerUpload",
-           "ecr:UploadLayerPart",
-           "ecr:CompleteLayerUpload"
-         ],
-         "Resource": "arn:aws:ecr:*:ACCOUNT_ID:repository/*"
-       }
-     ]
-   }
-   ```
+### OCIR Repository Convention
 
-3. **Generate Access Key** for the IAM user:
-   - Go to IAM User → Security credentials → Create access key
-   - Save AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+Images are pushed to:
+`<region>.ocir.io/<namespace>/<service>:<tag>`
+
+Example:
+`us-phoenix-1.ocir.io/mytenancy/user-service:latest`
 
 ---
 
 ## GitHub Secrets Configuration
 
-GitHub Actions use **Secrets** to securely store sensitive credentials. Configure these in your repository:
-### How to Set Secrets
+Configure these repository secrets:
 
-1. Go to GitHub repository → **Settings** → **Secrets and variables** → **Actions**
-2. Click **New repository secret**
-3. Add each secret below with its value
-
-### Required Secrets
-
-| Secret Name | Value | Example |
+| Secret Name | Description | Example |
 |---|---|---|
-| `AWS_ACCESS_KEY_ID` | IAM access key from step 3 above | `AKIA...` |
-| `AWS_SECRET_ACCESS_KEY` | IAM secret key from step 3 above | `wJalrXUtnFEMI...` |
-| `AWS_REGION` | AWS region for ECR | `us-east-1` |
-| `ECR_REGISTRY` | Full ECR registry URL | `123456789.dkr.ecr.us-east-1.amazonaws.com` |
+| `OCI_REGION` | OCI region | `us-phoenix-1` |
+| `OCI_NAMESPACE` | OCI namespace | `mytenancy` |
+| `OCI_TENANCY_OCID` | Tenancy OCID | `ocid1.tenancy.oc1...` |
+| `OCI_USER_OCID` | User OCID | `ocid1.user.oc1...` |
+| `OCI_FINGERPRINT` | API key fingerprint | `aa:bb:cc:...` |
+| `OCI_PRIVATE_KEY` | API private key PEM (multiline) | `-----BEGIN PRIVATE KEY-----...` |
+| `OCIR_REGISTRY` | OCIR registry host | `us-phoenix-1.ocir.io` |
 
-### Example Secrets Setup
+Optional deployment secrets:
 
-```bash
-# After creating IAM user with access key:
-
-# Secret 1: AWS Access Key ID
-gh secret set AWS_ACCESS_KEY_ID --body "AKIAIOSFODNN7EXAMPLE"
-
-# Secret 2: AWS Secret Access Key
-gh secret set AWS_SECRET_ACCESS_KEY --body "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
-
-# Secret 3: AWS Region
-gh secret set AWS_REGION --body "us-east-1"
-
-# Secret 4: ECR Registry URL
-gh secret set ECR_REGISTRY --body "123456789.dkr.ecr.us-east-1.amazonaws.com"
-```
+| Secret Name | Description |
+|---|---|
+| `OCI_COMPUTE_HOST` | Always Free VM public IP or hostname |
+| `OCI_COMPUTE_USER` | SSH user (for Ubuntu images typically `ubuntu`) |
+| `OCI_SSH_PRIVATE_KEY` | SSH key for deploy step |
 
 ---
 
 ## Workflow Overview
 
 ### Pipeline Stages
-```
-1. TRIGGER
-This project uses GitHub Actions to automate:
-   ├─ Python linting (flake8)
 
-   └─ Java services (mvn test)
-
-4. BUILD & PUSH (only on main branch push)
-   ├─ Tag with git SHA + latest
-   └─ Push to AWS ECR
-```
+1. Trigger
+   - Push to main
+   - Pull request to main
+2. Lint
+   - flake8 checks for Python services
+3. Test
+   - pytest for Python services
+   - mvn test for Product service
+4. Build and Push (main only)
+   - Build all Docker images
+   - Tag with commit SHA and latest
+   - Push to OCIR
+5. Deploy (optional)
+   - Pull images on Oracle Cloud Always Free instance
+   - Restart services with docker compose
 
 ### Job Definitions
 
 #### `lint-python`
-- **When:** Every push and pull request
-- **What:** Runs flake8 on Python services
-- **Status:** Warnings allowed (continue-on-error: true)
-- **Purpose:** Code quality feedback
+- Runs on every push and PR
+- Runs flake8 on Python services
 
 #### `test-python`
-- **When:** Every push and pull request (after lint)
-- **What:** Runs pytest on User, Order, Notification services
-- **Status:** Tests must pass for merge (unless skipped due to missing deps)
-- **Purpose:** Unit test validation
+- Runs on every push and PR
+- Runs pytest for User, Order, and Notification services
 
-- **Purpose:** Java service validation
+#### `test-java`
+- Runs on every push and PR
+- Runs `mvn test` for Product service
 
-- **What:** Builds Docker images and pushes to ECR
-- **Purpose:** Automated production deployment
+#### `build-and-push`
+- Runs only on push to `main`
+- Builds and pushes service images to OCIR
+
+#### `deploy` (optional)
+- Manual or environment-gated
+- Deploys latest OCIR images to Oracle Cloud Always Free VM
 
 ---
 
-## Workflow Execution
-### On Pull Request
+## On Push to Main
 
-1. Code is committed to a feature branch
-2. Pull request created against `main`
-3. Workflow automatically triggers
-4. **Lint** job runs (style checking)
-5. **Test jobs** run in parallel (Python + Java)
-6. Status check appears on PR
-7. If all pass: PR can be merged
-8. If any fail: PR blocked until fixed
-
-### On Push to Main
-
-1. Code pushed to `main` branch
-2. Workflow triggers
-3. **Lint** and **Test** jobs run (same as PR)
-4. If all pass: **Build & Push** job starts
-5. Docker images built for all services
-6. Images tagged with:
-   - Commit SHA (e.g., `user-service:a1b2c3d4`)
-   - `latest` tag for stable release
-7. Images pushed to AWS ECR
-8. Automatic deployment can be triggered (ECS update)
+1. Lint and tests run.
+2. If all checks pass, Docker images are built.
+3. Images are tagged:
+   - `<service>:<short-sha>`
+   - `<service>:latest`
+4. Images are pushed to OCIR.
+5. Optional deploy job updates Oracle Cloud Always Free environment.
 
 ---
 
 ## Troubleshooting
 
-### Build Fails: Secrets Not Configured
+### Build fails: OCI auth error
 
-**Error:** `aws-actions/configure-aws-credentials: Access Denied`
+Typical causes:
+- Invalid `OCI_PRIVATE_KEY`
+- Wrong `OCI_FINGERPRINT`
+- Incorrect OCID values
 
-**Solution:**
-1. Verify all 4 secrets are set in GitHub Settings → Secrets
-2. Check IAM user permissions include ECR access
-3. Verify AWS_REGION matches ECR region
+Checks:
+- Validate API key in OCI Console
+- Confirm region and namespace values
+- Confirm key format is unchanged
 
+### Push fails: unauthorized
 
-**Error:** `Docker build failed: Service not found`
+- Verify OCIR login uses username format:
+  `<namespace>/<identity-provider>/<username>`
+- Verify `OCIR_REGISTRY` value matches region
 
-**Solution:**
-1. Verify all Dockerfiles are present in service directories
-2. Check base image names (e.g., `nginx:alpine`, `python:3.11-slim`)
-3. Ensure required dependencies are in requirements.txt or pom.xml
+### Push fails: repository not found
 
-### Tests Fail: Missing Dependencies
-
-**Error:** `ModuleNotFoundError: No module named 'fastapi'`
-**Solution:**
-1. Ensure requirements.txt is present and complete
-2. CI workflow installs dependencies via `pip install -r requirements.txt`
-3. For Java: verify pom.xml has all dependencies
-
-### Image Push Fails: ECR Repository Not Found
-
-**Error:** `Error response from daemon: name unknown: 123456789.dkr.ecr.us-east-1.amazonaws.com/user-service:latest`
-
-**Solution:**
-1. Verify ECR repositories exist: `aws ecr describe-repositories`
-2. Check ECR registry URL in GitHub Secrets matches actual registry
-3. Ensure IAM user has `ecr:CreateRepository` permissions to auto-create
+- Ensure target path is correct: `<region>.ocir.io/<namespace>/<repo>`
+- Push once manually to create repository if policy requires it
 
 ---
 
-## Local Testing
+## Local Validation
 
-### Using `act` (GitHub Actions Emulator)
-
-Test the workflow locally before pushing:
+### Validate images locally
 
 ```bash
-# Install act (see https://github.com/nektos/act)
-# macOS:
-brew install act
-
-# List all workflow jobs
-act -l
-
-act -j build-and-push --secret-file .secrets
-
-```
-
-### Manual Docker Build Test
-Test individual service builds:
-
-```bash
-# Test User Service build
 docker build -t user-service:test services/user-service/
-
-# Test Product Service build
 docker build -t product-service:test services/product-service/
-
-# Test Order Service build
 docker build -t order-service:test services/order-service/
-
-# Test Notification Service build
 docker build -t notification-service:test services/notification-service/
-
-# Test Gateway build
 docker build -t api-gateway:test gateway/
-
-# Run image and test (example)
-docker run -p 8001:8001 user-service:test
-curl http://localhost:8001/health
 ```
 
----
+### Validate workflow with act
 
-## Monitoring & Debugging
-
-### GitHub Actions Dashboard
-
-1. Go to repository → **Actions** tab
-2. Click workflow run to see logs
-3. Click specific job to see detailed output
-4. Expand "Run tests" or "Build and push" steps for logs
-
-### Workflow Logs
-
-Each job produces logs showing:
-- Environment setup (Python version, Java version)
-- Dependency installation (pip install, mvn dependency:resolve)
-- Test execution output (pytest results, mvn test output)
-- Push status (successful, failed)
-
-### Debugging Failed Jobs
-
-**Lint failures:**
 ```bash
-# Run locally
-flake8 services/user-service/ --max-line-length=120
-```
-
-**Test failures:**
-```bash
-# Run locally
-pytest services/user-service/tests/ -v
-```
-
-**Build failures:**
-```bash
-# Test Docker build locally
-docker build -t test services/user-service/
-docker run test pytest tests/
+act -l
+act -j test-python
+act -j build-and-push --secret-file .secrets
 ```
 
 ---
 
 ## Security Best Practices
 
-1. **Rotate AWS Keys Regularly**
-   - GitHub Secrets should be rotated every 90 days
-   - Create new IAM user, update secrets, delete old user
-
-2. **Minimal IAM Permissions**
-   - IAM user for GitHub should only have ECR access
-   - Avoid using root AWS credentials
-   - Use resource-level permissions (specific repositories)
-
-3. **Secrets Not in Code**
-   - Never commit AWS keys, API keys, or tokens to git
-   - Always use GitHub Secrets for sensitive data
-   - Add `.secrets` to `.gitignore`
-
-4. **Branch Protection**
-   - Require CI workflow to pass before merge
-   - Go to Settings → Branches → main → Require status checks to pass
-   - Require at least one review before merge
+1. Rotate OCI API keys regularly.
+2. Use least-privilege OCI policies for registry and compute access.
+3. Store all secrets in GitHub Secrets, never in source code.
+4. Require branch protection and passing checks before merge.
+5. Keep container images patched and rebuild frequently.
 
 ---
 
-## Integration with ECS Deployment
+## Oracle Cloud Always Free Deployment
 
-After images are pushed to ECR, you can automate ECS deployment:
+### Environment-based configuration
 
-1. **Create ECS Task Definition** with image references:
-   ```json
-   {
-     "containerDefinitions": [
-       {
-         "name": "user-service",
-         "image": "123456789.dkr.ecr.us-east-1.amazonaws.com/user-service:latest",
-         "portMappings": [{"containerPort": 8001}]
-       }
-   }
-   ```
+Use separate environment files:
+- `.env.development`
+- `.env.staging`
+- `.env.production`
 
-2. **Add ECS deployment step to workflow** (optional Phase 6 enhancement):
-   ```yaml
-   - name: Update ECS service
-     run: |
-       aws ecs update-service \
-         --cluster ecommerce \
-         --service user-service \
-         --force-new-deployment
-   ```
+Run with environment-specific compose overlays:
+
+```bash
+# Development
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+
+# Production (Oracle Cloud Always Free)
+docker compose -f docker-compose.yml -f docker-compose.oci.yml up -d
+```
+
+### One-command deployment
+
+```bash
+./deploy.sh production
+```
+
+`deploy.sh` should:
+1. Pull latest OCIR images.
+2. Export production environment variables.
+3. Restart services with the OCI compose overlay.
+4. Run health checks through gateway endpoints.
 
 ---
 
 ## Summary
 
-| Step | Who | When | Status |
+| Step | Tool | When | Target |
 |---|---|---|---|
-| Lint | GitHub Actions | Every push/PR | ⚠ Warning (non-blocking) |
-| Test | GitHub Actions | Every push/PR | ✓ Pass required |
-| Build | GitHub Actions | Main branch only | ✓ Pass required |
-| Push | GitHub Actions | Main branch only | ✓ Automatic after build |
+| Lint | GitHub Actions + flake8 | Every push/PR | Code quality |
+| Test | GitHub Actions + pytest/mvn | Every push/PR | Test coverage |
+| Build | GitHub Actions + Docker | Main branch only | Docker images |
+| Push | GitHub Actions + OCIR | Main branch only | Oracle Container Registry |
+| Deploy | Manual or workflow | On demand | Oracle Cloud Always Free |
 
-With this setup, every commit to main automatically rebuilds and deploys all services to AWS ECR, enabling rapid iteration and rollback via image tags.
+With this setup, every commit to `main` can build and publish images to OCIR, with optional one-command deployment to Oracle Cloud Always Free.

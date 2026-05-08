@@ -195,7 +195,7 @@ if not webhook_url.startswith("https://"):
 
 2. **Phase 5 (API Gateway):** Configure nginx routing; implement rate limiting.
 
-3. **Phase 6 (CI/CD):** Create GitHub Actions pipeline for build, test, Docker push, ECS deployment.
+3. **Phase 6 (CI/CD):** Create GitHub Actions pipeline for build, test, Docker push, Oracle Cloud Always Free deployment.
 
 ---
 
@@ -215,3 +215,4 @@ All 10 tests pass. Ready for docker-compose integration and end-to-end testing.
 **Executed By:** GSD Phase Executor (gsd-planner mode, TDD approach)  
 **Execution Time:** ~5 minutes  
 **Commit:** feat(04-notification-service): implement Factory pattern notifiers and RabbitMQ consumer
+

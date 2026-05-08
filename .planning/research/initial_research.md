@@ -18,6 +18,7 @@ Key Observations
 
 Suggested Research Follow-ups
 ----------------------------
-- Deployment options: AWS ECS (Fargate) vs EKS — pros/cons for cost and operational complexity.
+- Deployment options: Oracle Cloud Always Free (ARM A1, 24 GB RAM) vs EKS — pros/cons for cost and operational complexity.
 - Local developer DX: provide `docker-compose.yml` to run all services + 4 Postgres instances + RabbitMQ.
-- Security: JWT best practices, secrets management (AWS Secrets Manager or Parameter Store).
+- Security: JWT best practices, secrets management (Oracle Cloud Secrets Manager or Parameter Store).
+
